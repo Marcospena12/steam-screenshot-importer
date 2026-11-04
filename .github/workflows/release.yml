@@ -29,8 +29,10 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run pytest
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: |
-          pytest -q
+          pytest -ra -v
 
       - name: Generate assets
         run: |
