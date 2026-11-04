@@ -41,9 +41,8 @@ jobs:
           pyinstaller SteamShotBridge.spec
 
       - name: Install Inno Setup
-        uses: choco-gh/setup-chocolatey@v1
-        with:
-          packages: innosetup
+        run: |
+          choco install innosetup --no-progress -y
 
       - name: Compile Installer with Inno Setup
         run: |
@@ -51,6 +50,7 @@ jobs:
 
       - name: Create Portable Zip
         run: |
+          if (-not (Test-Path dist-installer)) { New-Item -ItemType Directory -Path dist-installer }
           Compress-Archive -Path dist\SteamShotBridge\* -DestinationPath dist-installer\SteamShotBridge-Portable-${{ github.ref_name }}.zip
 
       - name: Create GitHub Release
