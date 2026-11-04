@@ -5,6 +5,13 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/)
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.1.1] - 2026-11-04
+
+### Corrigido
+- Importação relativa no script de entrada `__main__.py` que impedia o executável congelado pelo PyInstaller de iniciar (`attempted relative import with no known parent package`).
+- Ícones de atalhos quebrados no instalador Inno Setup: os atalhos agora utilizam o recurso de ícone nativo embutido no próprio executável (`.exe`).
+- Cópia recursiva completa do diretório `assets\` para a pasta de instalação.
+
 ## [0.1.0] - 2026-11-04
 
 ### Adicionado

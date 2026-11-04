@@ -2,7 +2,7 @@
 ; Requer o Inno Setup 6 instalado (https://jrsoftware.org/isdl.php)
 
 #define MyAppName "SteamShotBridge"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.1.1"
 #define MyAppPublisher "Marcos Pena"
 #define MyAppURL "https://github.com/Marcospena12/steam-screenshot-importer"
 #define MyAppExeName "SteamShotBridge.exe"
@@ -37,11 +37,11 @@ Name: "autostart"; Description: "Iniciar automaticamente com o Windows"; GroupDe
 
 [Files]
 Source: "dist\SteamShotBridge\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "assets\steamshotbridge.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\steamshotbridge.ico"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\steamshotbridge.ico"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
 ; Opcional se selecionado na tarefa
