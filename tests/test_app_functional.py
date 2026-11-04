@@ -24,14 +24,6 @@ from steamshotbridge.watcher import Event, FolderWatcher
 from tools.watch import main as watch_cli_main
 
 
-@pytest.fixture(scope="session")
-def qapp() -> QApplication:
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
-
-
 @pytest.fixture(autouse=True)
 def _steam_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(importer, "is_steam_running", lambda: False)

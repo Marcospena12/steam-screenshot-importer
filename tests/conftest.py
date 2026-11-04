@@ -7,7 +7,16 @@ from pathlib import Path
 # Garante display virtual headless para Qt em CI / background
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtWidgets import QApplication
 import pytest
+
+
+@pytest.fixture(scope="session", autouse=True)
+def qapp() -> QApplication:
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app
 
 _ORIGINAL_APPDATA = os.environ.get("APPDATA")
 _REAL_BASE = (

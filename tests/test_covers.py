@@ -29,14 +29,6 @@ from steamshotbridge.app.covers import (
 from steamshotbridge.app.window import MainWindow
 
 
-@pytest.fixture(scope="session", autouse=True)
-def qapp() -> QApplication:
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
-
-
 @pytest.fixture(autouse=True)
 def _block_real_network(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail_network(*args, **kwargs):

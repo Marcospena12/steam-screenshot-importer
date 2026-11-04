@@ -28,14 +28,6 @@ from steamshotbridge.app.window import MainWindow
 from steamshotbridge.games import Game
 
 
-@pytest.fixture(scope="session")
-def qapp() -> QApplication:
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
-
-
 BASE_VDF = '''"screenshots"
 {
     "shortcutnames"

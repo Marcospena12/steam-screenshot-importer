@@ -38,14 +38,6 @@ def _steam_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(exe_map_module, "is_steam_running", lambda: False)
 
 
-@pytest.fixture
-def qapp() -> QApplication:
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
-
-
 def _userdata(tmp_path: Path) -> Path:
     userdata = tmp_path / "Steam" / "userdata" / "12345"
     (userdata / "760").mkdir(parents=True)
