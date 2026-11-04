@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 import unicodedata
 import zlib
@@ -20,6 +21,8 @@ from .steam import (
 )
 
 MAX_STEAM_APPID = 0xFFFFFFFF
+MAX_GAME_ID = 0xFFFFFFFFFFFFFFFF
+MAX_GAME_NAME_LENGTH = 120
 MISSING = object()
 
 
@@ -56,11 +59,18 @@ def default_config_path() -> Path:
 def normalize_game_name(name: object) -> str:
     if not isinstance(name, str):
         raise GameValidationError("O nome do jogo deve ser um texto")
-    if any(unicodedata.category(character) == "Cc" for character in name):
-        raise GameValidationError("O nome do jogo não pode conter caracteres de controle")
-    normalized = name.strip()
+    cleaned = "".join(
+        character
+        for character in name
+        if unicodedata.category(character) != "Cc"
+    )
+    normalized = re.sub(r"\s+", " ", cleaned).strip()
     if not normalized:
         raise GameValidationError("O nome do jogo não pode ficar vazio")
+    if len(normalized) > MAX_GAME_NAME_LENGTH:
+        raise GameValidationError(
+            f"O nome do jogo não pode ter mais de {MAX_GAME_NAME_LENGTH} caracteres"
+        )
     return normalized
 
 
@@ -103,7 +113,7 @@ def _entry_game_id(entry: object) -> int | None:
         value = int(str(raw))
     except (TypeError, ValueError):
         return None
-    if value < 1 or value > 0xFFFFFFFFFFFFFFFF:
+    if value < 1 or value > MAX_GAME_ID:
         return None
     return value
 
@@ -116,6 +126,63 @@ def _entry_name(entry: object) -> str | None:
         return None
     name = raw.strip()
     return name or None
+
+
+def _parse_name_overrides(data: Mapping) -> dict[int, str]:
+    raw_overrides = data.get("name_overrides", {})
+    if not isinstance(raw_overrides, Mapping):
+        return {}
+    overrides: dict[int, str] = {}
+    for raw_game_id, raw_name in raw_overrides.items():
+        if isinstance(raw_game_id, bool):
+            continue
+        try:
+            game_id = int(str(raw_game_id))
+        except (TypeError, ValueError):
+            continue
+        if game_id < 1 or game_id > MAX_GAME_ID:
+            continue
+        if not isinstance(raw_name, str):
+            continue
+        name = raw_name.strip()
+        if name:
+            overrides[game_id] = name
+    return overrides
+
+
+def load_name_overrides(
+    config_path: Path | str | None = None,
+) -> dict[int, str]:
+    path = (
+        Path(config_path)
+        if config_path is not None
+        else default_config_path()
+    )
+    return _parse_name_overrides(_load_config(path))
+
+
+def _app_game_names(config_path: Path) -> dict[int, str]:
+    data = _load_config(config_path)
+    names: dict[int, str] = {}
+
+    custom_entries = data.get("custom_games", [])
+    if isinstance(custom_entries, list):
+        for entry in custom_entries:
+            game_id = _entry_game_id(entry)
+            name = _entry_name(entry)
+            if game_id is not None and name is not None:
+                names[game_id] = name
+
+    exe_map = data.get("exe_map", {})
+    if isinstance(exe_map, Mapping):
+        for entry in exe_map.values():
+            game_id = _entry_game_id(entry)
+            name = _entry_name(entry)
+            if game_id is not None and name is not None:
+                names[game_id] = name
+
+    names.update(_parse_name_overrides(data))
+    return names
 
 
 def _atomic_write_config(path: Path, data: Mapping) -> None:
@@ -330,6 +397,7 @@ def list_games(
 ) -> list[Game]:
     userdata_dir = Path(steam_userdata_dir)
     path = Path(config_path) if config_path is not None else default_config_path()
+    app_names = _app_game_names(path)
 
     screenshots_path, shortcutnames = _load_shortcutnames(userdata_dir)
     shortcut_games, shortcut_game_ids = _shortcut_games(
@@ -354,6 +422,15 @@ def list_games(
             if game.game_id in seen:
                 continue
             seen.add(game.game_id)
+            app_name = app_names.get(game.game_id)
+            if app_name is not None and app_name != game.name:
+                game = Game(
+                    name=app_name,
+                    game_id=game.game_id,
+                    kind=game.kind,
+                    source=game.source,
+                    orphan=game.orphan,
+                )
             games.append(game)
 
     return sorted(games, key=lambda game: (game.name.casefold(), game.game_id))

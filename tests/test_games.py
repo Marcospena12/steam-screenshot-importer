@@ -196,7 +196,7 @@ def test_source_priority_uses_game_id_not_name(tmp_path: Path) -> None:
 
     assert len(games) == 4
     assert by_id[shortcut_id].kind == "shortcut"
-    assert by_id[shortcut_id].name == "Name H1"
+    assert by_id[shortcut_id].name == "Custom H1"
     assert by_id[custom_and_shortcutname_id].kind == "custom"
     assert by_id[custom_and_shortcutname_id].name == "Custom H2"
     assert by_id[custom_low_id].kind == "custom"
@@ -289,10 +289,8 @@ def test_config_write_is_atomic_and_preserves_previous_file(
     [
         "",
         "   ",
-        "\tNome",
-        "Nome\n",
-        "Nome\x00Interno",
-        "Nome\x7f",
+        "\t \n",
+        "\x00\x7f",
     ],
 )
 def test_custom_game_rejects_invalid_names(
@@ -307,10 +305,25 @@ def test_custom_game_rejects_invalid_names(
     assert not config.exists()
 
 
+def test_custom_game_cleans_control_characters_and_spaces(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.json"
+
+    game = create_custom_game("  Nome\t\x00 Interno \n", config)
+
+    assert game.name == "Nome Interno"
+
+
 def test_normalize_game_name_rejects_non_text_and_preserves_spaces() -> None:
     assert normalize_game_name("  Jogo  ") == "Jogo"
+    assert normalize_game_name("  Jogo   de   Cartas  ") == "Jogo de Cartas"
+    assert normalize_game_name("\tNome\n") == "Nome"
+    assert normalize_game_name("Nome\x00Interno\x7f") == "NomeInterno"
     with pytest.raises(GameValidationError):
         normalize_game_name(None)
+    with pytest.raises(GameValidationError):
+        normalize_game_name("A" * 121)
 
 
 def test_list_cli_prints_ids_kinds_names_and_screenshot_counts(

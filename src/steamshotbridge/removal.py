@@ -539,20 +539,35 @@ def _mark_config_removed(game_id: int, config_path: Path) -> None:
         return
     if not isinstance(data, dict):
         return
-    custom_list = data.get("custom_games")
-    if not isinstance(custom_list, list):
-        return
 
-    filtered = [
-        entry
-        for entry in custom_list
-        if not (
-            isinstance(entry, Mapping)
-            and str(entry.get("game_id")) == str(gid)
+    changed = False
+    custom_list = data.get("custom_games")
+    if isinstance(custom_list, list):
+        filtered = [
+            entry
+            for entry in custom_list
+            if not (
+                isinstance(entry, Mapping)
+                and str(entry.get("game_id")) == str(gid)
+            )
+        ]
+        if len(filtered) != len(custom_list):
+            data["custom_games"] = filtered
+            changed = True
+
+    overrides = data.get("name_overrides")
+    if isinstance(overrides, Mapping):
+        override_key = next(
+            (key for key in overrides.keys() if str(key) == str(gid)),
+            None,
         )
-    ]
-    if len(filtered) != len(custom_list):
-        data["custom_games"] = filtered
+        if override_key is not None:
+            mutable_overrides = dict(overrides)
+            del mutable_overrides[override_key]
+            data["name_overrides"] = mutable_overrides
+            changed = True
+
+    if changed:
         _atomic_write(
             config_path,
             (json.dumps(data, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),

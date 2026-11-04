@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Callable
 
@@ -169,6 +170,32 @@ def create_tray_icon(
         icon.addPixmap(pixmap)
 
     return icon
+
+
+def create_app_logo_pixmap(size: int = 128, dark_mode: bool = True) -> QPixmap:
+    """Cria um Pixmap com a logo do app em alta resolução (sem o dot de status)."""
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+    accent_color = QColor("#6C7CFF" if dark_mode else "#4F5BD5")
+    rect = QRectF(1.0, 1.0, size - 2.0, size - 2.0)
+    path = QPainterPath()
+    radius = size * 0.28
+    path.addRoundedRect(rect, radius, radius)
+    painter.fillPath(path, accent_color)
+
+    # Câmera / abertura estilizada central
+    inner_pen = QPen(QColor("#FFFFFF"), max(2.0, size * 0.08))
+    painter.setPen(inner_pen)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+    center_circle = QRectF(size * 0.28, size * 0.28, size * 0.44, size * 0.44)
+    painter.drawEllipse(center_circle)
+
+    painter.end()
+    return pixmap
 
 
 class ToggleSwitch(QAbstractButton):
@@ -791,6 +818,10 @@ class GameDetailsDialog(QDialog):
             prov = QLabel("Status: Título provisório")
             prov.setStyleSheet("color: #F59E0B; font-weight: 500;")
             info_layout.addWidget(prov)
+        self.lbl_status = QLabel("")
+        self.lbl_status.setProperty("secondary", "true")
+        self.lbl_status.setVisible(False)
+        info_layout.addWidget(self.lbl_status)
         info_layout.addStretch()
 
         header.addLayout(info_layout)
@@ -877,8 +908,13 @@ class GameDetailsDialog(QDialog):
             self.accept()
 
     def set_name(self, name: str) -> None:
+        self.game = replace(self.game, name=name)
         self.setWindowTitle(f"Detalhes: {name}")
         self.lbl_name.setText(name)
+
+    def set_status(self, text: str) -> None:
+        self.lbl_status.setText(text)
+        self.lbl_status.setVisible(bool(text))
 
     def set_cover(self, pixmap: QPixmap, source: str) -> None:
         self.cover_label.setPixmap(pixmap)

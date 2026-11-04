@@ -397,7 +397,15 @@ def _prepare_shortcuts(
         if record.get("rename"):
             new_app_name = record.get("name")
             if new_app_name and target_shortcut is not None:
-                target_shortcut["AppName"] = str(new_app_name)
+                app_name_key = next(
+                    (
+                        key
+                        for key in target_shortcut.keys()
+                        if str(key).casefold() == "appname"
+                    ),
+                    "AppName",
+                )
+                target_shortcut[app_name_key] = str(new_app_name)
                 added += 1
             continue
 
@@ -428,7 +436,10 @@ def _prepare_screenshots(
 ) -> tuple[Path, bytes | None]:
     path = userdata_dir / "760" / "screenshots.vdf"
     if not path.is_file():
-        if any(record.get("type") != "remove" for record in records):
+        if any(
+            record.get("type") not in ("remove", "rename")
+            for record in records
+        ):
             raise PendingError(f"screenshots.vdf não encontrado: {path}")
         for record in records:
             if not (
@@ -466,6 +477,21 @@ def _prepare_screenshots(
                 if shortcutnames is None:
                     shortcutnames = vdf.VDFDict()
                     screenshots["shortcutnames"] = shortcutnames
+                elif not isinstance(shortcutnames, vdf.VDFDict):
+                    if isinstance(shortcutnames, Mapping):
+                        mutable = vdf.VDFDict()
+                        for key, value in shortcutnames.items():
+                            mutable[key] = value
+                        existing_key = next(
+                            (
+                                key
+                                for key in screenshots.keys()
+                                if str(key).casefold() == "shortcutnames"
+                            ),
+                            "shortcutnames",
+                        )
+                        screenshots[existing_key] = mutable
+                        shortcutnames = mutable
                 if isinstance(shortcutnames, Mapping):
                     shortcutnames[game_id] = game_name
             continue

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -33,14 +34,15 @@ from PySide6.QtWidgets import (
 
 from ..exe_map import (
     default_config_path,
+    is_manual_game_name,
     is_shortcut_applied,
     list_exe_map,
     load_exe_map,
-    rename_exe,
+    rename_game,
     resolve_exe,
     update_exe_mapping,
 )
-from ..games import Game, list_games
+from ..games import Game, GameValidationError, list_games
 from ..removal import (
     can_remove_game,
     inspect_removal,
@@ -78,6 +80,9 @@ from .widgets import (
     create_tray_icon,
 )
 from .worker import WatcherWorker
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
@@ -777,21 +782,64 @@ class MainWindow(QMainWindow):
                 f"Novo nome para '{game.name}':",
                 text=game.name,
             )
-            if ok and new_name.strip() and self.steam_userdata_dir is not None:
-                exe_map = load_exe_map(self.config_path)
-                match_exe = next((m.exe for m in exe_map.values() if m.game_id == game.game_id), game.name)
-                rename_exe(
-                    match_exe,
-                    new_name.strip(),
+            if not ok:
+                return
+            if self.steam_userdata_dir is None:
+                QMessageBox.warning(
+                    self,
+                    "Renomear jogo",
+                    "Pasta userdata da Steam não configurada.",
+                )
+                return
+            try:
+                result = rename_game(
+                    game.game_id,
+                    new_name,
                     self.steam_userdata_dir,
                     self.config_path,
                     self.pending_path,
                 )
-                self.refresh_games()
-                self.add_log_entry("aplicado", new_name, f"Jogo renomeado para '{new_name}'")
+            except GameValidationError as exc:
+                QMessageBox.warning(self, "Nome inválido", str(exc))
+                return
+            except Exception as exc:
+                LOGGER.exception("Falha ao renomear o jogo %s", game.game_id)
+                QMessageBox.warning(
+                    self,
+                    "Erro ao renomear",
+                    f"Não foi possível renomear: {exc}",
+                )
+                return
+
+            if dialog is not None:
+                dialog.set_name(result.name)
+                dialog.set_status(
+                    "pendente"
+                    if result.status == "pendente"
+                    else "nome aplicado"
+                )
+            self.refresh_games()
+            self.refresh_pending()
+            if result.status == "pendente":
+                message = (
+                    "Nome alterado; será aplicado na Steam quando ela fechar"
+                )
+                self.add_log_entry("pendente", result.name, message)
+            else:
+                message = "Nome alterado"
+                self.add_log_entry("aplicado", result.name, message)
+            QMessageBox.information(self, "Renomear jogo", message)
 
         elif action == "resolve":
             game = payload if isinstance(payload, Game) else payload[0]
+            if is_manual_game_name(game.game_id, self.config_path):
+                QMessageBox.information(
+                    self,
+                    "Identificação",
+                    "Este jogo tem um nome definido manualmente. "
+                    "Use 'Renomear jogo...' para alterá-lo.",
+                )
+                return
             exe_map = load_exe_map(self.config_path)
             match_exe = next((m.exe for m in exe_map.values() if m.game_id == game.game_id), None)
             if match_exe:
@@ -813,6 +861,7 @@ class MainWindow(QMainWindow):
                         is_dark=self.theme_manager.is_dark,
                     )
                     if dialog is not None:
+                        dialog.set_name(better_name)
                         dialog.set_cover(pix, src)
                     self.refresh_games()
                     QMessageBox.information(
