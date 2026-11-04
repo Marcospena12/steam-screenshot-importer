@@ -21,6 +21,7 @@ dev = [
 ]
 
 [project.scripts]
+steamshotbridge = "steamshotbridge.app:run_app"
 steamshot-inspect = "steamshotbridge.inspection:main"
 
 [tool.setuptools.packages.find]
