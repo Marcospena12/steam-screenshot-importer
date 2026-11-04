@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "steamshotbridge"
+version = "0.1.0"
+description = "Import external screenshots into Steam's screenshot library"
+requires-python = ">=3.11"
+dependencies = [
+    "Pillow>=10.0",
+    "PySide6>=6.6",
+    "psutil>=5.9",
+    "vdf>=3.2",
+    "watchdog>=4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+steamshot-inspect = "steamshotbridge.inspection:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

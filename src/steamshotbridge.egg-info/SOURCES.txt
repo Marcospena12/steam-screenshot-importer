@@ -1,0 +1,8 @@
+pyproject.toml
+src/steamshotbridge/__init__.py
+src/steamshotbridge.egg-info/PKG-INFO
+src/steamshotbridge.egg-info/SOURCES.txt
+src/steamshotbridge.egg-info/dependency_links.txt
+src/steamshotbridge.egg-info/entry_points.txt
+src/steamshotbridge.egg-info/requires.txt
+src/steamshotbridge.egg-info/top_level.txt
