@@ -56,6 +56,9 @@ def get_autostart_command(executable: str | None = None) -> str:
     exe = executable or sys.executable
     exe_path = Path(exe)
 
+    if getattr(sys, "frozen", False):
+        return f'"{exe}" --minimized'
+
     if exe_path.name.lower() == "python.exe":
         pythonw = exe_path.with_name("pythonw.exe")
         if pythonw.is_file():

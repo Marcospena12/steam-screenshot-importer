@@ -161,6 +161,10 @@ def generate_placeholder_cover(
     return pixmap
 
 
+MAX_IMAGE_PIXELS = 40_000_000
+MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
 def save_image_to_cache(
     source_path: Path | str,
     target_cache_path: Path,
@@ -168,6 +172,8 @@ def save_image_to_cache(
     try:
         target_cache_path.parent.mkdir(parents=True, exist_ok=True)
         with Image.open(source_path) as img:
+            if (img.width * img.height) > MAX_IMAGE_PIXELS:
+                return False
             img = img.convert("RGB")
             if img.width > MAX_WIDTH:
                 new_height = int(img.height * (MAX_WIDTH / img.width))
@@ -237,12 +243,15 @@ def download_url(
     url_opener: Callable[[str], bytes | None] | None = None,
 ) -> bytes | None:
     parsed = urllib.parse.urlparse(url)
-    if parsed.netloc.lower() not in ALLOWED_DOMAINS:
+    if parsed.scheme.lower() != "https" or parsed.netloc.lower() not in ALLOWED_DOMAINS:
         return None
 
     if url_opener is not None:
         try:
-            return url_opener(url)
+            res = url_opener(url)
+            if res and len(res) > MAX_DOWNLOAD_BYTES:
+                return None
+            return res
         except Exception:
             return None
 
@@ -253,7 +262,17 @@ def download_url(
         )
         with urllib.request.urlopen(req, timeout=timeout) as response:
             if response.status == 200:
-                return response.read()
+                chunks: list[bytes] = []
+                total = 0
+                while True:
+                    chunk = response.read(65536)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > MAX_DOWNLOAD_BYTES:
+                        return None
+                    chunks.append(chunk)
+                return b"".join(chunks)
     except Exception:
         return None
     return None

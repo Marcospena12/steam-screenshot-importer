@@ -26,6 +26,9 @@ USER_AGENT = "SteamShotBridge/0.1.0 (Windows)"
 ALLOWED_STORE_DOMAIN = "store.steampowered.com"
 
 
+MAX_DOWNLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
 def default_steam_names_cache_path() -> Path:
     return default_config_path().parent / "steam_names.json"
 
@@ -150,13 +153,16 @@ def fetch_store_app_name(
     aid = str(appid)
     url = f"https://store.steampowered.com/api/appdetails?appids={aid}&filters=basic&l=english"
     parsed = urllib.parse.urlparse(url)
-    if parsed.netloc.lower() != ALLOWED_STORE_DOMAIN:
+    if parsed.scheme.lower() != "https" or parsed.netloc.lower() != ALLOWED_STORE_DOMAIN:
         return None
 
     raw_bytes: bytes | None = None
     if url_opener is not None:
         try:
-            raw_bytes = url_opener(url)
+            res = url_opener(url)
+            if res and len(res) > MAX_DOWNLOAD_BYTES:
+                return None
+            raw_bytes = res
         except Exception:
             return None
     else:
@@ -167,7 +173,17 @@ def fetch_store_app_name(
             )
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 if response.status == 200:
-                    raw_bytes = response.read()
+                    chunks: list[bytes] = []
+                    total = 0
+                    while True:
+                        chunk = response.read(65536)
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if total > MAX_DOWNLOAD_BYTES:
+                            return None
+                        chunks.append(chunk)
+                    raw_bytes = b"".join(chunks)
         except Exception:
             return None
 
