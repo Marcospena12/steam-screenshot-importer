@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import os
 import sys
 import pytest
 
 
-def main() -> int:
+def main() -> None:
     args = ["-ra", "-v", "--tb=short"]
     exit_code = pytest.main(args)
-    # Se todos os testes passaram (ExitCode.OK == 0), retorna 0 estritamente.
-    if exit_code == pytest.ExitCode.OK:
-        return 0
-    return int(exit_code)
+    # Usa os._exit para evitar crash no destrutor C++ do Qt/PySide6 (0xC0000409)
+    # durante a finalização do interpretador no Windows.
+    code = 0 if exit_code == pytest.ExitCode.OK else int(exit_code)
+    os._exit(code)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
