@@ -3,3 +3,10 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 inspect_output.txt
+
+# PyInstaller / Build outputs
+build/
+dist/
+dist-installer/
+*.egg-info/
+
